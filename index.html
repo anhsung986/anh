@@ -487,11 +487,91 @@
 
                 const img = document.createElement('img');
                 img.src = imgObj.src;
-                // Thêm sự kiện click để mở lightbox
+                // Nhấn vào ảnh sẽ mở khung phóng to (Lightbox)
                 img.onclick = () => openLightbox(imgObj.src);
 
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'card-actions';
 
-                const downloadBtn = document.createElement
-        
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'action-btn download-btn';
+                downloadBtn.innerHTML = '📥';
+                downloadBtn.title = 'Tải ảnh về';
+                downloadBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    downloadImage(imgObj.src);
+                };
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'action-btn delete-btn';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.title = 'Xóa ảnh';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteImage(imgObj.id);
+                };
+
+                actionsDiv.appendChild(downloadBtn);
+                actionsDiv.appendChild(deleteBtn);
+                imgContainer.appendChild(img);
+                imgContainer.appendChild(actionsDiv);
+
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'card-date';
+                
+                const dateObj = new Date(imgObj.createdAt);
+                const timeString = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                const dateString = dateObj.toLocaleDateString('vi-VN');
+                dateDiv.innerText = `${timeString} - ${dateString}`;
+
+                card.appendChild(imgContainer);
+                card.appendChild(dateDiv);
+                gallery.appendChild(card);
+            });
+        }
+
+        // Các hàm xử lý Lightbox phóng to ảnh
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            lightboxImg.src = src;
+            lightbox.classList.add('show');
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('show');
+        }
+
+        function downloadImage(url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `kyniem_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showNotification('Đang tải ảnh xuống...');
+        }
+
+        function deleteImage(id) {
+            if (!db) return;
+
+            const transaction = db.transaction(["images"], "readwrite");
+            const store = transaction.objectStore("images");
+            store.delete(id);
+
+            transaction.oncomplete = function() {
+                showNotification('Đã xóa ảnh!');
+                loadAllGalleries();
+            };
+        }
+
+        function showNotification(text) {
+            const notification = document.getElementById('notification');
+            notification.innerText = text;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 2000);
+        }
+    </script>
+</body>
+</html>
