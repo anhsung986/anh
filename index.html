@@ -298,6 +298,113 @@
             font-weight: bold;
             cursor: pointer;
         }
+
+        /* --- CSS cho Modal Nhập Mật Khẩu (Xóa ảnh) --- */
+        #password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            animation: fadeIn 0.2s ease;
+        }
+
+        #password-modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px 20px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transform: scale(0.9);
+            animation: scaleUp 0.2s ease forwards;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--text-color);
+            font-size: 1.2rem;
+        }
+
+        .modal-content p {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 10px 14px;
+            box-sizing: border-box;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1rem;
+            outline: none;
+            transition: var(--transition);
+            text-align: center;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input:focus {
+            border-color: var(--danger-color);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .btn-cancel {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .btn-cancel:hover {
+            background-color: #e5e7eb;
+        }
+
+        .btn-confirm {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background-color: #dc2626;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -348,16 +455,31 @@
 
     <div id="notification">Thành công!</div>
 
-    <!-- Lightbox Container -->
+    <!-- Lightbox Container (Phóng to ảnh) -->
     <div id="lightbox" onclick="closeLightbox()">
         <span id="lightbox-close">&times;</span>
         <img id="lightbox-img" src="" alt="Phóng to ảnh">
     </div>
 
+    <!-- Modal Nhập Mật Khẩu Xóa Ảnh -->
+    <div id="password-modal">
+        <div class="modal-content">
+            <h3>🔒 Xác nhận xóa</h3>
+            <p>Vui lòng nhập mật khẩu để xóa ảnh này</p>
+            <input type="password" id="delete-password-input" placeholder="Nhập mật khẩu..." onkeydown="handlePasswordKey(event)">
+            <div class="modal-buttons">
+                <button class="modal-btn btn-cancel" onclick="closePasswordModal()">Hủy</button>
+                <button class="modal-btn btn-confirm" onclick="verifyAndDelete()">Xóa</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentCategory = 'self';
         let selectedFiles = [];
-        
+        let pendingDeleteId = null; // Lưu ID ảnh chuẩn bị xóa
+        const CORRECT_PASSWORD = "123456"; // 🔑 Mật khẩu mặc định để xóa ảnh (Có thể đổi tùy ý)
+
         let db;
         const dbRequest = indexedDB.open("ImageGalleryDB", 1);
 
@@ -487,7 +609,7 @@
 
                 const img = document.createElement('img');
                 img.src = imgObj.src;
-                // Nhấn vào ảnh sẽ mở khung phóng to (Lightbox)
+                // Nhấn vào ảnh để phóng to
                 img.onclick = () => openLightbox(imgObj.src);
 
                 const actionsDiv = document.createElement('div');
@@ -508,7 +630,7 @@
                 deleteBtn.title = 'Xóa ảnh';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
-                    deleteImage(imgObj.id);
+                    promptDeleteImage(imgObj.id); // Gọi hiện Modal mật khẩu
                 };
 
                 actionsDiv.appendChild(downloadBtn);
@@ -527,10 +649,10 @@
                 card.appendChild(imgContainer);
                 card.appendChild(dateDiv);
                 gallery.appendChild(card);
-            });
+                            });
         }
 
-        // Các hàm xử lý Lightbox phóng to ảnh
+        // Lightbox Functions
         function openLightbox(src) {
             const lightbox = document.getElementById('lightbox');
             const lightboxImg = document.getElementById('lightbox-img');
@@ -541,6 +663,42 @@
         function closeLightbox() {
             const lightbox = document.getElementById('lightbox');
             lightbox.classList.remove('show');
+        }
+
+        // Password Modal Functions for Deletion
+        function promptDeleteImage(id) {
+            pendingDeleteId = id;
+            const modal = document.getElementById('password-modal');
+            const input = document.getElementById('delete-password-input');
+            input.value = '';
+            modal.classList.add('show');
+            setTimeout(() => input.focus(), 100);
+        }
+
+        function closePasswordModal() {
+            const modal = document.getElementById('password-modal');
+            modal.classList.remove('show');
+            pendingDeleteId = null;
+        }
+
+        function verifyAndDelete() {
+            const input = document.getElementById('delete-password-input');
+            if (input.value === CORRECT_PASSWORD) {
+                if (pendingDeleteId !== null) {
+                    deleteImage(pendingDeleteId);
+                }
+                closePasswordModal();
+            } else {
+                showNotification('Mật khẩu không đúng!');
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function handlePasswordKey(event) {
+            if (event.key === 'Enter') {
+                verifyAndDelete();
+            }
         }
 
         function downloadImage(url) {
@@ -561,7 +719,7 @@
             store.delete(id);
 
             transaction.oncomplete = function() {
-                showNotification('Đã xóa ảnh!');
+                showNotification('Đã xóa ảnh thành công!');
                 loadAllGalleries();
             };
         }
