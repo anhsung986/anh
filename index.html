@@ -299,8 +299,8 @@
             cursor: pointer;
         }
 
-        /* --- CSS cho Modal Nhập Mật Khẩu (Xóa ảnh) --- */
-        #password-modal {
+        /* --- CSS cho Modal Nhập Mật Khẩu (Dùng chung hoặc riêng) --- */
+        .password-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -315,7 +315,7 @@
             animation: fadeIn 0.2s ease;
         }
 
-        #password-modal.show {
+        .password-modal.show {
             display: flex;
         }
 
@@ -359,7 +359,7 @@
         }
 
         .modal-content input:focus {
-            border-color: var(--danger-color);
+            border-color: var(--primary-color);
         }
 
         .modal-buttons {
@@ -387,12 +387,21 @@
             background-color: #e5e7eb;
         }
 
-        .btn-confirm {
+        .btn-confirm-upload {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-confirm-upload:hover {
+            background-color: #2563eb;
+        }
+
+        .btn-confirm-delete {
             background-color: var(--danger-color);
             color: white;
         }
 
-        .btn-confirm:hover {
+        .btn-confirm-delete:hover {
             background-color: #dc2626;
         }
 
@@ -431,7 +440,8 @@
             
             <div class="btn-group">
                 <button class="custom-file-btn" onclick="document.getElementById('imageInput').click()">📁 Chọn ảnh</button>
-                <button id="uploadBtn" class="upload-action-btn" onclick="uploadSelectedImages()" disabled>🚀 Tải lên</button>
+                <!-- Thay vì gọi trực tiếp hàm upload, nay sẽ bật modal nhập mật khẩu -->
+                <button id="uploadBtn" class="upload-action-btn" onclick="promptUploadImages()" disabled>🚀 Tải lên</button>
             </div>
             <div id="file-name-display">Chưa có ảnh nào được chọn</div>
         </div>
@@ -461,15 +471,28 @@
         <img id="lightbox-img" src="" alt="Phóng to ảnh">
     </div>
 
+    <!-- Modal Nhập Mật Khẩu Tải Lên Ảnh -->
+    <div id="upload-password-modal" class="password-modal">
+        <div class="modal-content">
+            <h3>🔒 Xác nhận tải lên</h3>
+            <p>Vui lòng nhập mật khẩu để đăng ảnh</p>
+            <input type="password" id="upload-password-input" placeholder="Nhập mật khẩu..." onkeydown="handleUploadPasswordKey(event)">
+            <div class="modal-buttons">
+                <button class="modal-btn btn-cancel" onclick="closeUploadPasswordModal()">Hủy</button>
+                <button class="modal-btn btn-confirm-upload" onclick="verifyAndUpload()">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Nhập Mật Khẩu Xóa Ảnh -->
-    <div id="password-modal">
+    <div id="password-modal" class="password-modal">
         <div class="modal-content">
             <h3>🔒 Xác nhận xóa</h3>
             <p>Vui lòng nhập mật khẩu để xóa ảnh này</p>
-            <input type="password" id="delete-password-input" placeholder="Nhập mật khẩu..." onkeydown="handlePasswordKey(event)">
+            <input type="password" id="delete-password-input" placeholder="Nhập mật khẩu..." onkeydown="handleDeletePasswordKey(event)">
             <div class="modal-buttons">
                 <button class="modal-btn btn-cancel" onclick="closePasswordModal()">Hủy</button>
-                <button class="modal-btn btn-confirm" onclick="verifyAndDelete()">Xóa</button>
+                <button class="modal-btn btn-confirm-delete" onclick="verifyAndDelete()">Xóa</button>
             </div>
         </div>
     </div>
@@ -477,8 +500,8 @@
     <script>
         let currentCategory = 'self';
         let selectedFiles = [];
-        let pendingDeleteId = null; // Lưu ID ảnh chuẩn bị xóa
-        const CORRECT_PASSWORD = "sungtuananh"; // 🔑 Mật khẩu mặc định để xóa ảnh (Có thể đổi tùy ý)
+        let pendingDeleteId = null; 
+        const PASSWORD = "1032012"; // 🔑 Mật khẩu chung cho cả Tải lên và Xóa
 
         let db;
         const dbRequest = indexedDB.open("ImageGalleryDB", 1);
@@ -529,6 +552,39 @@
                 uploadBtn.disabled = true;
             }
         });
+
+        // --- Các hàm xử lý Modal Mật Khẩu Tải Lên ---
+        function promptUploadImages() {
+            if (selectedFiles.length === 0) return;
+            const modal = document.getElementById('upload-password-modal');
+            const input = document.getElementById('upload-password-input');
+            input.value = '';
+            modal.classList.add('show');
+            setTimeout(() => input.focus(), 100);
+        }
+
+        function closeUploadPasswordModal() {
+            const modal = document.getElementById('upload-password-modal');
+            modal.classList.remove('show');
+        }
+
+        function verifyAndUpload() {
+            const input = document.getElementById('upload-password-input');
+            if (input.value === PASSWORD) {
+                closeUploadPasswordModal();
+                uploadSelectedImages();
+            } else {
+                showNotification('Mật khẩu không đúng!');
+                input.value = '';
+                input.focus();
+            }
+        }
+
+        function handleUploadPasswordKey(event) {
+            if (event.key === 'Enter') {
+                verifyAndUpload();
+            }
+        }
 
         function uploadSelectedImages() {
             if (selectedFiles.length === 0 || !db) return;
@@ -601,6 +657,7 @@
             }
 
             images.forEach((imgObj) => {
+            images.forEach((imgObj) => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 
@@ -609,7 +666,6 @@
 
                 const img = document.createElement('img');
                 img.src = imgObj.src;
-                // Nhấn vào ảnh để phóng to
                 img.onclick = () => openLightbox(imgObj.src);
 
                 const actionsDiv = document.createElement('div');
@@ -630,7 +686,7 @@
                 deleteBtn.title = 'Xóa ảnh';
                 deleteBtn.onclick = (e) => {
                     e.stopPropagation();
-                    promptDeleteImage(imgObj.id); // Gọi hiện Modal mật khẩu
+                    promptDeleteImage(imgObj.id); 
                 };
 
                 actionsDiv.appendChild(downloadBtn);
@@ -649,7 +705,7 @@
                 card.appendChild(imgContainer);
                 card.appendChild(dateDiv);
                 gallery.appendChild(card);
-                            });
+            });
         }
 
         // Lightbox Functions
@@ -683,7 +739,7 @@
 
         function verifyAndDelete() {
             const input = document.getElementById('delete-password-input');
-            if (input.value === CORRECT_PASSWORD) {
+            if (input.value === PASSWORD) {
                 if (pendingDeleteId !== null) {
                     deleteImage(pendingDeleteId);
                 }
@@ -695,7 +751,7 @@
             }
         }
 
-        function handlePasswordKey(event) {
+        function handleDeletePasswordKey(event) {
             if (event.key === 'Enter') {
                 verifyAndDelete();
             }
