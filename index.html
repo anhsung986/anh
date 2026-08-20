@@ -429,6 +429,7 @@
             <button class="tab-btn active" data-tab="self">👤 Bản Thân</button>
             <button class="tab-btn" data-tab="ny">❤️ Người Yêu</button>
             <button class="tab-btn" data-tab="sky">☁️ Bầu Trời & V.v</button>
+            <button class="tab-btn" data-tab="portrait">🖼️ Chân Dung</button>
         </div>
 
         <!-- Khu vực Tải ảnh lên -->
@@ -459,6 +460,11 @@
         <div id="section-sky" class="category-section">
             <div class="section-title">Bầu Trời & V.v</div>
             <div class="gallery" id="gallery-sky"></div>
+        </div>
+
+        <div id="section-portrait" class="category-section">
+            <div class="section-title">Chân Dung</div>
+            <div class="gallery" id="gallery-portrait"></div>
         </div>
     </div>
 
@@ -521,7 +527,7 @@
             }
         };
 
-        // --- Xử lý Chuyển Tab (Dùng addEventListener thay vì onclick inline) ---
+        // --- Xử lý Chuyển Tab ---
         const tabButtons = document.querySelectorAll('.tab-btn');
         tabButtons.forEach(btn => {
             btn.addEventListener('click', function() {
@@ -537,7 +543,8 @@
                 const titles = {
                     'self': 'Bản Thân',
                     'ny': 'Người Yêu',
-                    'sky': 'Bầu Trời & V.v'
+                    'sky': 'Bầu Trời & V.v',
+                    'portrait': 'Chân Dung'
                 };
                 document.getElementById('uploadLabel').innerText = `Mục: ${titles[category]}`;
             });
@@ -637,7 +644,7 @@
 
             request.onsuccess = function(event) {
                 const allImages = event.target.result;
-                const categorized = { self: [], ny: [], sky: [] };
+                const categorized = { self: [], ny: [], sky: [], portrait: [] };
                 
                 allImages.sort((a, b) => b.createdAt - a.createdAt);
 
@@ -650,12 +657,13 @@
                 renderGallery('self', categorized.self);
                 renderGallery('ny', categorized.ny);
                 renderGallery('sky', categorized.sky);
+                renderGallery('portrait', categorized.portrait);
             };
         }
 
         function renderGallery(category, images) {
             const gallery = document.getElementById(`gallery-${category}`);
-                gallery.innerHTML = '';
+            gallery.innerHTML = '';
 
             if (images.length === 0) {
                 gallery.innerHTML = `<div class="empty-text">Chưa có ảnh nào.</div>`;
